@@ -6,5 +6,9 @@
   {
     "task": "Take Bath",
     "completed": true
+  },
+  {
+    "task": "New Task Name",
+    "completed": false
   }
 ]
