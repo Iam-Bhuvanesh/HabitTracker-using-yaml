@@ -1,9 +1,10 @@
-name: Habit Tracker
+name: 6AM Habit Tracker Pro
 on:
   issues:
     types: [opened]
   schedule:
-    - cron: '30 0 * * *'
+    # 06:00 AM IST (UTC+5:30) is 00:30 UTC
+    - cron: '30 0 * * *' 
 
 permissions:
   contents: write
@@ -22,60 +23,47 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # 1. Clean the input (Lowercase and Trim)
+          # 1. Clean input
           CLEAN_TITLE=$(echo "$ISSUE_TITLE" | xargs | tr '[:upper:]' '[:lower:]')
 
           # --- PATH A: THE 6:00 AM RESET ---
           if [ "$EVENT_NAME" = "schedule" ]; then
             jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
 
-          # --- PATH B: REMOVE TASK (Aggressive match) ---
+          # --- PATH B: REMOVE TASK ---
           elif [[ "$CLEAN_TITLE" == remove* ]]; then
-            # Extract the task name after 'remove '
             TARGET=$(echo "$CLEAN_TITLE" | sed 's/^remove //')
-            # Delete any task that matches the name (ignoring case)
             jq --arg T "$TARGET" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
-            echo "Successfully purged: $TARGET"
 
-          # --- PATH C: ADD OR COMPLETE ---
+          # --- PATH C: MARK AS DONE ---
+          elif [[ "$CLEAN_TITLE" == done* ]]; then
+            TARGET=$(echo "$CLEAN_TITLE" | sed 's/^done //')
+            jq --arg T "$TARGET" 'map(if .task | ascii_downcase == ($T | ascii_downcase) then .completed = true else . end)' database.json > temp.json && mv temp.json database.json
+
+          # --- PATH D: ADD NEW TASK ---
           else
-            # NEW LOGIC: 
-            # 1. If task exists: set to completed = true.
-            # 2. If task is new: add to list as completed = false.
-            jq --arg T "$ISSUE_TITLE" '
-              if any(.[]; .task == $T) 
-              then map(if .task == $T then .completed = true else . end)
-              else . + [{"task": $T, "completed": false}] 
-              end' database.json > temp.json && mv temp.json database.json
+            # Adds as incomplete [ ] by default
+            jq --arg T "$ISSUE_TITLE" '. + [{"task": $T, "completed": false}]' database.json > temp.json && mv temp.json database.json
           fi
-
-      - name: Fresh README Build
-        run: |
-          # We overwrite the README entirely every time to ensure no 'ghost' tasks remain
-          echo "# ☀️ Daily Dashboard" > README.md
-          echo "Sync Time: $(date)" >> README.md
-          echo -e "\n### Active Habits" >> README.md
-          
-          # Only pull tasks that actually exist in the database.json right now
-          jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task)" end' database.json >> README.md
 
       - name: Update README
         run: |
           echo "# ☀️ Daily Dashboard" > README.md
           echo "Last Synced: $(date)" >> README.md
           echo -e "\n### My Tasks" >> README.md
+          # Rebuilds the list from scratch so deleted tasks disappear
           jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task)" end' database.json >> README.md
 
-      - name: Save and Push
+      - name: Save Changes
         run: |
           git config --global user.name "HabitBot"
           git config --global user.email "bot@github.com"
-          git add .
-          git commit -m "Automated Update: $EVENT_NAME" || exit 0
+          git add database.json README.md
+          git commit -m "Sync: $EVENT_NAME" || exit 0
           git push
 
       - name: Close Issue
         if: github.event_name == 'issues'
-        run: gh issue close ${{ github.event.issue.number }} --comment "Done!"
+        run: gh issue close ${{ github.event.issue.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
