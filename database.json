@@ -12,5 +12,9 @@
   {
     "task": "Two Leetcode",
     "completed": true
+  },
+  {
+    "task": "Leetcode",
+    "completed": false
   }
 ]
