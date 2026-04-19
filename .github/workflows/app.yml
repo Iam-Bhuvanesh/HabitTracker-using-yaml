@@ -22,33 +22,42 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # 1. CLEANUP: Trim spaces and handle case
-          # This turns "  REMOVE  Exercise  " into "remove exercise"
+          # 1. Clean the input (Lowercase and Trim)
           CLEAN_TITLE=$(echo "$ISSUE_TITLE" | xargs | tr '[:upper:]' '[:lower:]')
 
           # --- PATH A: THE 6:00 AM RESET ---
           if [ "$EVENT_NAME" = "schedule" ]; then
             jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
 
-          # --- PATH B: REMOVE TASK ---
-          # Checks if the clean title starts with "remove "
+          # --- PATH B: REMOVE TASK (Aggressive match) ---
           elif [[ "$CLEAN_TITLE" == remove* ]]; then
-            # Extract the task name by removing the word "remove "
-            TARGET_TASK=$(echo "$CLEAN_TITLE" | sed 's/^remove //')
-            
-            # Use jq to delete the item. We compare lowercase to lowercase.
-            jq --arg T "$TARGET_TASK" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
-            echo "Deleted task: $TARGET_TASK"
+            # Extract the task name after 'remove '
+            TARGET=$(echo "$CLEAN_TITLE" | sed 's/^remove //')
+            # Delete any task that matches the name (ignoring case)
+            jq --arg T "$TARGET" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
+            echo "Successfully purged: $TARGET"
 
-          # --- PATH C: COMPLETE TASK ---
+          # --- PATH C: ADD OR COMPLETE ---
           else
-            # Set to true if exists, or add new if it doesn't.
+            # NEW LOGIC: 
+            # 1. If task exists: set to completed = true.
+            # 2. If task is new: add to list as completed = false.
             jq --arg T "$ISSUE_TITLE" '
               if any(.[]; .task == $T) 
               then map(if .task == $T then .completed = true else . end)
-              else . + [{"task": $T, "completed": true}] 
+              else . + [{"task": $T, "completed": false}] 
               end' database.json > temp.json && mv temp.json database.json
           fi
+
+      - name: Fresh README Build
+        run: |
+          # We overwrite the README entirely every time to ensure no 'ghost' tasks remain
+          echo "# ☀️ Daily Dashboard" > README.md
+          echo "Sync Time: $(date)" >> README.md
+          echo -e "\n### Active Habits" >> README.md
+          
+          # Only pull tasks that actually exist in the database.json right now
+          jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task)" end' database.json >> README.md
 
       - name: Update README
         run: |
