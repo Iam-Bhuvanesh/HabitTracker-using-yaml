@@ -4,6 +4,7 @@ on:
     types: [opened]
   schedule:
     - cron: '30 0 * * *' # 6:00 AM IST
+  workflow_dispatch: # Allows you to run it manually from the Actions tab
 
 permissions:
   contents: write
@@ -22,32 +23,27 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # 1. Clean input strings
+          # 1. Clean input
           CLEAN_TITLE=$(echo "$ISSUE_TITLE" | xargs)
           LOWER_TITLE=$(echo "$CLEAN_TITLE" | tr '[:upper:]' '[:lower:]')
 
-          # --- PATH A: THE 6:00 AM RESET OR MANUAL REFRESH ---
-          if [ "$EVENT_NAME" = "schedule" ] || [ "$LOWER_TITLE" = "refresh" ]; then
-            echo "Action: Resetting all tasks to incomplete."
+          # --- PATH A: RESET ---
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$LOWER_TITLE" = "refresh" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
 
-          # --- PATH B: REMOVE TASK ---
+          # --- PATH B: REMOVE ---
           elif [[ "$LOWER_TITLE" == remove* ]]; then
             TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Rr][Ee][Mm][Oo][Vv][Ee][[:space:]]*//')
             jq --arg T "$TARGET" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
-            echo "Removed task: $TARGET"
 
           # --- PATH C: MARK AS DONE ---
           elif [[ "$LOWER_TITLE" == done* ]]; then
             TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Dd][Oo][Nn][Ee][[:space:]]*//')
             jq --arg T "$TARGET" 'map(if .task | ascii_downcase == ($T | ascii_downcase) then .completed = true else . end)' database.json > temp.json && mv temp.json database.json
-            echo "Completed task: $TARGET"
 
-          # --- PATH D: ADD NEW TASK (Default) ---
+          # --- PATH D: ADD NEW ---
           else
-            # Only add if it doesn't already exist
             jq --arg T "$CLEAN_TITLE" 'if any(.[]; .task == $T) then . else . + [{"task": $T, "completed": false}] end' database.json > temp.json && mv temp.json database.json
-            echo "Added task: $CLEAN_TITLE"
           fi
 
       - name: Rebuild README
@@ -55,7 +51,12 @@ jobs:
           echo "# ☀️ Daily Dashboard" > README.md
           echo "Last Update: $(date)" >> README.md
           echo -e "\n### My Tasks" >> README.md
-          jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task)" end' database.json >> README.md
+          echo "To add a task, [click here](https://github.com/${{ github.repository }}/issues/new?title=New%20Task%20Name)." >> README.md
+          echo -e "\n---\n" >> README.md
+          
+          # This JQ logic creates the list. 
+          # If a task is incomplete, it adds a link that pre-fills an issue with "DONE [Task Name]"
+          jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task) ➔ [ [Tick It](https://github.com/${{ github.repository }}/issues/new?title=DONE%20\(.task|@uri)) ]" end' database.json >> README.md
 
       - name: Force Save to GitHub
         run: |
@@ -63,9 +64,9 @@ jobs:
           git config --global user.email "bot@github.com"
           git add database.json README.md
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No changes."
           else
-            git commit -m "Automated Sync: $EVENT_NAME"
+            git commit -m "Dashboard Update"
             git push origin main
           fi
 
