@@ -18,21 +18,31 @@ jobs:
 
       - name: Process Logic
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
+          # 1. CLEANUP: Trim spaces and handle case
+          # This turns "  REMOVE  Exercise  " into "remove exercise"
+          CLEAN_TITLE=$(echo "$ISSUE_TITLE" | xargs | tr '[:upper:]' '[:lower:]')
+
           # --- PATH A: THE 6:00 AM RESET ---
           if [ "$EVENT_NAME" = "schedule" ]; then
             jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
 
           # --- PATH B: REMOVE TASK ---
-          elif [[ "$ISSUE_TITLE" == REMOVE* ]]; then
-            TASK_NAME=$(echo "$ISSUE_TITLE" | sed 's/REMOVE //g')
-            jq --arg T "$TASK_NAME" 'del(.[] | select(.task == $T))' database.json > temp.json && mv temp.json database.json
+          # Checks if the clean title starts with "remove "
+          elif [[ "$CLEAN_TITLE" == remove* ]]; then
+            # Extract the task name by removing the word "remove "
+            TARGET_TASK=$(echo "$CLEAN_TITLE" | sed 's/^remove //')
+            
+            # Use jq to delete the item. We compare lowercase to lowercase.
+            jq --arg T "$TARGET_TASK" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
+            echo "Deleted task: $TARGET_TASK"
 
-          # --- PATH C: COMPLETE TASK (No Flipping) ---
+          # --- PATH C: COMPLETE TASK ---
           else
-            # Logic: If task exists, set completed to TRUE. If new, add it.
+            # Set to true if exists, or add new if it doesn't.
             jq --arg T "$ISSUE_TITLE" '
               if any(.[]; .task == $T) 
               then map(if .task == $T then .completed = true else . end)
