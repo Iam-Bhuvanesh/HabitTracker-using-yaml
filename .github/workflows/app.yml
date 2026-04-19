@@ -1,0 +1,44 @@
+name: GitHub Todo App
+on:
+  issues:
+    types: [opened, closed, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Update Database & README
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Get all open issues via GitHub CLI
+          gh issue list --state all --json number,title,state,labels > raw_data.json
+
+          # 2. Format a nice Dashboard for the README
+          echo "# 🚀 My GitHub App Dashboard" > README.md
+          echo "Last Update: $(date)" >> README.md
+          echo -e "\n## 📝 Active Tasks" >> README.md
+          
+          # Use jq (pre-installed) to parse JSON into a Markdown list
+          jq -r '.[] | select(.state=="OPEN") | "- [ ] \( .title ) (#\( .number ))"' raw_data.json >> README.md
+          
+          echo -e "\n## ✅ Completed" >> README.md
+          jq -r '.[] | select(.state=="CLOSED") | "- [x] ~\( .title )~"' raw_data.json >> README.md
+
+          # 3. Save the JSON data as our "official" DB
+          mv raw_data.json database.json
+
+      - name: Deploy Changes
+        run: |
+          git config --global user.name "App-Bot"
+          git config --global user.email "bot@github.com"
+          git add README.md database.json
+          git commit -m "App Sync: Updated Tasks" || exit 0
+          git push
