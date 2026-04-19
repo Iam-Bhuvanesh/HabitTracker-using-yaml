@@ -1,7 +1,9 @@
-name: GitHub Todo App
+name: Habit Tracker
 on:
   issues:
-    types: [opened, closed, labeled]
+    types: [opened]
+  schedule:
+    - cron: '30 0 * * *'
 
 permissions:
   contents: write
@@ -14,31 +16,47 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Update Database & README
+      - name: Process Logic
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          # --- PATH A: THE 6:00 AM RESET ---
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
+
+          # --- PATH B: REMOVE TASK ---
+          elif [[ "$ISSUE_TITLE" == REMOVE* ]]; then
+            TASK_NAME=$(echo "$ISSUE_TITLE" | sed 's/REMOVE //g')
+            jq --arg T "$TASK_NAME" 'del(.[] | select(.task == $T))' database.json > temp.json && mv temp.json database.json
+
+          # --- PATH C: COMPLETE TASK (No Flipping) ---
+          else
+            # Logic: If task exists, set completed to TRUE. If new, add it.
+            jq --arg T "$ISSUE_TITLE" '
+              if any(.[]; .task == $T) 
+              then map(if .task == $T then .completed = true else . end)
+              else . + [{"task": $T, "completed": true}] 
+              end' database.json > temp.json && mv temp.json database.json
+          fi
+
+      - name: Update README
+        run: |
+          echo "# ☀️ Daily Dashboard" > README.md
+          echo "Last Synced: $(date)" >> README.md
+          echo -e "\n### My Tasks" >> README.md
+          jq -r '.[] | if .completed then "- [x] \(.task)" else "- [ ] \(.task)" end' database.json >> README.md
+
+      - name: Save and Push
+        run: |
+          git config --global user.name "HabitBot"
+          git config --global user.email "bot@github.com"
+          git add .
+          git commit -m "Automated Update: $EVENT_NAME" || exit 0
+          git push
+
+      - name: Close Issue
+        if: github.event_name == 'issues'
+        run: gh issue close ${{ github.event.issue.number }} --comment "Done!"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # 1. Get all open issues via GitHub CLI
-          gh issue list --state all --json number,title,state,labels > raw_data.json
-
-          # 2. Format a nice Dashboard for the README
-          echo "# 🚀 My GitHub App Dashboard" > README.md
-          echo "Last Update: $(date)" >> README.md
-          echo -e "\n## 📝 Active Tasks" >> README.md
-          
-          # Use jq (pre-installed) to parse JSON into a Markdown list
-          jq -r '.[] | select(.state=="OPEN") | "- [ ] \( .title ) (#\( .number ))"' raw_data.json >> README.md
-          
-          echo -e "\n## ✅ Completed" >> README.md
-          jq -r '.[] | select(.state=="CLOSED") | "- [x] ~\( .title )~"' raw_data.json >> README.md
-
-          # 3. Save the JSON data as our "official" DB
-          mv raw_data.json database.json
-
-      - name: Deploy Changes
-        run: |
-          git config --global user.name "App-Bot"
-          git config --global user.email "bot@github.com"
-          git add README.md database.json
-          git commit -m "App Sync: Updated Tasks" || exit 0
-          git push
