@@ -9,6 +9,6 @@
   },
   {
     "task": "New Task Name",
-    "completed": false
+    "completed": true
   }
 ]
