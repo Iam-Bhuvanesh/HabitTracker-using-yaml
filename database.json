@@ -1,1 +1,12 @@
-[{"labels":[],"number":1,"state":"CLOSED","title":"Code 2 programs"}]
+[
+  {
+    "labels": [],
+    "number": 1,
+    "state": "CLOSED",
+    "title": "Code 2 programs"
+  },
+  {
+    "task": "Code 2 programs",
+    "completed": true
+  }
+]
