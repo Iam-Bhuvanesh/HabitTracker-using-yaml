@@ -2,5 +2,9 @@
   {
     "task": "Leetcode",
     "completed": true
+  },
+  {
+    "task": "Take Bath",
+    "completed": false
   }
 ]

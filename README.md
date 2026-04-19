@@ -1,5 +1,5 @@
 # ☀️ Daily Dashboard
-Last Update: Sun Apr 19 16:08:02 UTC 2026
+Last Update: Sun Apr 19 16:20:31 UTC 2026
 
 ### My Tasks
 To add a task, [click here](https://github.com/Iam-Bhuvanesh/HabitTracker-using-yaml/issues/new?title=New%20Task%20Name).
@@ -7,3 +7,4 @@ To add a task, [click here](https://github.com/Iam-Bhuvanesh/HabitTracker-using-
 ---
 
 - [x] Leetcode
+- [ ] Take Bath ➔ [ [Tick It](https://github.com/Iam-Bhuvanesh/HabitTracker-using-yaml/issues/new?title=DONE%20Take%20Bath) ]
