@@ -10,5 +10,9 @@
   {
     "task": "New Task Name",
     "completed": false
+  },
+  {
+    "task": "cooking",
+    "completed": false
   }
 ]
