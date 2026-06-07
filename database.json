@@ -18,5 +18,9 @@
   {
     "task": "git",
     "completed": false
+  },
+  {
+    "task": "Take bath kamali",
+    "completed": false
   }
 ]
