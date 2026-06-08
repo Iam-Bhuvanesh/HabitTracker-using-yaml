@@ -1,15 +1,15 @@
 [
   {
     "task": "Leetcode",
-    "completed": true
+    "completed": false
   },
   {
     "task": "Take Bath",
-    "completed": true
+    "completed": false
   },
   {
     "task": "New Task Name",
-    "completed": true
+    "completed": false
   },
   {
     "task": "cooking",
