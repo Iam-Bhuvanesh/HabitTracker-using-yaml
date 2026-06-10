@@ -14,5 +14,9 @@
   {
     "task": "cooking",
     "completed": false
+  },
+  {
+    "task": "Aptitude",
+    "completed": false
   }
 ]
