@@ -15,16 +15,4 @@
     "task": "cooking",
     "completed": false
   },
-  {
-    "task": "git",
-    "completed": false
-  },
-  {
-    "task": "Take bath kamali",
-    "completed": false
-  },
-  {
-    "task": "DELETE Take bath kamali",
-    "completed": true
-  }
 ]
