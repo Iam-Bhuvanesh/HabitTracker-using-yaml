@@ -22,5 +22,9 @@
   {
     "task": "Take bath kamali",
     "completed": false
+  },
+  {
+    "task": "DELETE Take bath kamali",
+    "completed": false
   }
 ]
