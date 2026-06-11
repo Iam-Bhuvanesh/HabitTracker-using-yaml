@@ -79,5 +79,18 @@
     "createdAt": "2026-06-09",
     "lastCompletedDate": null,
     "history": []
+  },
+  {
+    "task": "Solve Something",
+    "completed": false,
+    "category": "Personal",
+    "priority": "Medium",
+    "frequency": "daily",
+    "completedDates": [],
+    "streak": 0,
+    "totalCompleted": 0,
+    "createdAt": "2026-06-11",
+    "lastCompletedDate": null,
+    "history": []
   }
 ]

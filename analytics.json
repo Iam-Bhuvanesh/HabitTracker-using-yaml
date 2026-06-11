@@ -1,5 +1,5 @@
 {
-  "totalTasks": 5,
+  "totalTasks": 6,
   "completedToday": 0,
   "completionRate": 0,
   "topHabits": [
@@ -46,7 +46,7 @@
     },
     {
       "category": "Personal",
-      "total": 1,
+      "total": 2,
       "completed": 0
     }
   ]

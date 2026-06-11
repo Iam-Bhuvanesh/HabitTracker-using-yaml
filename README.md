@@ -5,9 +5,9 @@
 
 ## 📊 Today's Quick Stats
 
-- **Completion Rate:** 0/5 tasks (0%)
-- **Total Habits:** 5
-- **Last Updated:** Thu Jun 11 05:09:46 UTC 2026
+- **Completion Rate:** 0/6 tasks (0%)
+- **Total Habits:** 6
+- **Last Updated:** Thu Jun 11 06:49:52 UTC 2026
 
 ---
 
@@ -23,6 +23,7 @@
 
 ### 📌 Personal
 - [ ] New Task Name | Priority: Medium | Streak: 🔥0 ➔ [[Tick It](https://github.com/Iam-Bhuvanesh/HabitTracker-using-yaml/issues/new?title=DONE%20New%20Task%20Name)]
+- [ ] Solve Something | Priority: Medium | Streak: 🔥0 ➔ [[Tick It](https://github.com/Iam-Bhuvanesh/HabitTracker-using-yaml/issues/new?title=DONE%20Solve%20Something)]
 
 
 ---
