@@ -1,0 +1,97 @@
+name: Habit Tracker Issue
+description: Create a new habit tracking issue with category, priority, and frequency
+title: "[HABIT] "
+labels: ["habit-tracker"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Habit Tracker Issue
+        Use this template to report or create issues related to habit tracking with structured metadata.
+
+  - type: textbox
+    id: habit_name
+    attributes:
+      label: Habit Name
+      description: What is the name of the habit you want to track?
+      placeholder: "e.g., Morning Exercise, Read 30 minutes, Drink Water"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Select the category for this habit
+      options:
+        - Health & Fitness
+        - Mental Health
+        - Productivity
+        - Learning
+        - Finance
+        - Social
+        - Personal Growth
+        - Hobbies
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Set the priority level for this habit
+      options:
+        - "🔴 Critical"
+        - "🟠 High"
+        - "🟡 Medium"
+        - "🟢 Low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      description: How often do you want to track this habit?
+      options:
+        - Daily
+        - Every Other Day
+        - 3 Times a Week
+        - Weekly
+        - Bi-weekly
+        - Monthly
+        - Custom
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide more details about the habit or any specific goals
+      placeholder: "Describe what you want to achieve with this habit..."
+
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals/Target
+      description: What are your specific goals or targets for this habit?
+      placeholder: "e.g., Exercise for 30 minutes, Read 1 chapter, Drink 8 glasses of water"
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any other relevant information or reminders
+      placeholder: "Add any additional notes or context..."
+
+  - type: checkboxes
+    id: acknowledgments
+    attributes:
+      label: Acknowledgments
+      options:
+        - label: I have read the habit tracking guidelines
+          required: false
+        - label: This habit aligns with my personal goals
+          required: false
