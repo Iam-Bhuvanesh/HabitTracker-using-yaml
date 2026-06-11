@@ -14,16 +14,24 @@
   },
   {
     "task": "Take Bath",
-    "completed": true,
+    "completed": false,
     "category": "Health",
     "priority": "High",
     "frequency": "daily",
-    "completedDates": ["2026-06-10"],
+    "completedDates": [
+      "2026-06-10"
+    ],
     "streak": 1,
     "totalCompleted": 1,
     "createdAt": "2026-05-15",
     "lastCompletedDate": "2026-06-10",
-    "history": [{"date": "2026-06-10", "time": "2026-06-10T04:45:00Z", "action": "DONE"}]
+    "history": [
+      {
+        "date": "2026-06-10",
+        "time": "2026-06-10T04:45:00Z",
+        "action": "DONE"
+      }
+    ]
   },
   {
     "task": "New Task Name",
@@ -40,16 +48,24 @@
   },
   {
     "task": "cooking",
-    "completed": true,
+    "completed": false,
     "category": "Health",
     "priority": "Medium",
     "frequency": "daily",
-    "completedDates": ["2026-06-10"],
+    "completedDates": [
+      "2026-06-10"
+    ],
     "streak": 1,
     "totalCompleted": 1,
     "createdAt": "2026-05-20",
     "lastCompletedDate": "2026-06-10",
-    "history": [{"date": "2026-06-10", "time": "2026-06-10T05:00:00Z", "action": "DONE"}]
+    "history": [
+      {
+        "date": "2026-06-10",
+        "time": "2026-06-10T05:00:00Z",
+        "action": "DONE"
+      }
+    ]
   },
   {
     "task": "Aptitude",

@@ -1,0 +1,53 @@
+{
+  "totalTasks": 5,
+  "completedToday": 0,
+  "completionRate": 0,
+  "topHabits": [
+    {
+      "task": "Take Bath",
+      "completions": 1,
+      "streak": 1
+    },
+    {
+      "task": "cooking",
+      "completions": 1,
+      "streak": 1
+    },
+    {
+      "task": "Leetcode",
+      "completions": 0,
+      "streak": 0
+    }
+  ],
+  "needsAttention": [
+    {
+      "task": "Leetcode",
+      "completions": 0
+    },
+    {
+      "task": "New Task Name",
+      "completions": 0
+    },
+    {
+      "task": "Aptitude",
+      "completions": 0
+    }
+  ],
+  "categories": [
+    {
+      "category": "Health",
+      "total": 2,
+      "completed": 0
+    },
+    {
+      "category": "Learning",
+      "total": 2,
+      "completed": 0
+    },
+    {
+      "category": "Personal",
+      "total": 1,
+      "completed": 0
+    }
+  ]
+}
