@@ -95,45 +95,40 @@ jobs:
             RATE=$((COMPLETED * 100 / TOTAL))
           fi
 
-          cat > README.md << EOF
-# ☀️ Daily Dashboard & Habit Tracker
-**Last Update:** $(date)
-
----
-
-## 📊 Today's Quick Stats
-
-- **Completion Rate:** $COMPLETED/$TOTAL tasks (${RATE}%)
-- **Total Habits:** $TOTAL
-- **Last Updated:** $(date)
-
----
-
-## 🎯 Habits Checklist
-
-EOF
+          echo "# ☀️ Daily Dashboard & Habit Tracker" > README.md
+          echo "**Last Update:** $(date)" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
+          echo "## 📊 Today's Quick Stats" >> README.md
+          echo "" >> README.md
+          echo "- **Completion Rate:** $COMPLETED/$TOTAL tasks ($RATE%)" >> README.md
+          echo "- **Total Habits:** $TOTAL" >> README.md
+          echo "- **Last Updated:** $(date)" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
+          echo "## 🎯 Habits Checklist" >> README.md
+          echo "" >> README.md
 
           jq -r '.[] | if .completed then "- [x] **\(.task)** | Streak: 🔥\(.streak)" else "- [ ] \(.task) | Streak: 🔥\(.streak) ➔ [[Tick It](https://github.com/${{ github.repository }}/issues/new?title=DONE%20\(.task|@uri))]" end' database.json >> README.md
 
-          cat >> README.md << 'EOF'
-
-
----
-
-## 🚀 How to Use
-
-### Add a New Task
-[Click here to add a new task](https://github.com/${{ github.repository }}/issues/new) by using the task name as the issue title.
-
-### Mark Task as Done
-Click "Tick It" next to any habit, or open an issue with the title `DONE TaskName`.
-
-### Remove a Task
-Open an issue with the title `REMOVE TaskName`.
-
-### Reset/Refresh Tasks
-Open an issue with the title `REFRESH` to manually reset tasks.
-EOF
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
+          echo "## 🚀 How to Use" >> README.md
+          echo "" >> README.md
+          echo "### Add a New Task" >> README.md
+          echo "[Click here to add a new task](https://github.com/${{ github.repository }}/issues/new) by using the task name as the issue title." >> README.md
+          echo "" >> README.md
+          echo "### Mark Task as Done" >> README.md
+          echo "Click \"Tick It\" next to any habit, or open an issue with the title \`DONE TaskName\`." >> README.md
+          echo "" >> README.md
+          echo "### Remove a Task" >> README.md
+          echo "Open an issue with the title \`REMOVE TaskName\`." >> README.md
+          echo "" >> README.md
+          echo "### Reset/Refresh Tasks" >> README.md
+          echo "Open an issue with the title \`REFRESH\` to manually reset tasks." >> README.md
 
       - name: Save Changes
         run: |
