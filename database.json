@@ -1,15 +1,23 @@
 [
   {
     "task": "Shell Kode",
-    "completed": false,
+    "completed": true,
     "category": "Personal",
     "priority": "Medium",
     "frequency": "daily",
-    "completedDates": [],
-    "streak": 0,
+    "completedDates": [
+      "2026-07-24"
+    ],
+    "streak": 1,
     "totalCompleted": 0,
     "createdAt": "2026-07-24",
-    "lastCompletedDate": null,
-    "history": []
+    "lastCompletedDate": "2026-07-24",
+    "history": [
+      {
+        "date": "2026-07-24",
+        "time": "2026-07-24T21:42:54Z",
+        "action": "DONE"
+      }
+    ]
   }
 ]
