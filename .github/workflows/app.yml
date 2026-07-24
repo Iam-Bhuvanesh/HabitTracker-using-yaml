@@ -1,10 +1,9 @@
-name: Habit Tracker Pro (Enhanced Edition)
+name: Habit Tracker
 on:
   issues:
     types: [opened]
   schedule:
     - cron: '30 0 * * *' # Daily 6:00 AM IST Reset
-    - cron: '0 0 * * 0'  # Weekly Sunday Midnight Cleanup
   workflow_dispatch:
 
 permissions:
@@ -18,172 +17,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # NEW: Check if Template Issue
-      - name: Check if Template Issue
-        id: check_template
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.payload.issue;
-            const body = issue.body || '';
-            
-            const isTemplate = body.includes('### Habit Name');
-            
-            core.setOutput('is_template', isTemplate ? 'true' : 'false');
-
-      # NEW: Parse Template Fields
-      - name: Parse Template Fields
-        if: steps.check_template.outputs.is_template == 'true'
-        id: parse
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.payload.issue;
-            const body = issue.body || '';
-            
-            const fields = {};
-            const parts = body.split(/^###\s+/m);
-            for (const part of parts) {
-              const lines = part.split(/\r?\n/);
-              const label = lines[0].trim();
-              if (label) {
-                fields[label] = lines.slice(1).join('\n').trim();
-              }
-            }
-            
-            const habitName = fields['Habit Name'] || issue.title;
-            const category = fields['Category'] || 'Personal';
-            const priority = fields['Priority'] ? fields['Priority'].replace(/[🔴🟠🟡🟢\s]/g, '') : 'Medium';
-            const frequency = fields['Frequency'] ? fields['Frequency'].trim().toLowerCase() : 'daily';
-            const description = fields['Description'] || '';
-            const goals = fields['Goals/Target'] || '';
-            
-            core.setOutput('habitName', habitName);
-            core.setOutput('category', category);
-            core.setOutput('priority', priority);
-            core.setOutput('frequency', frequency);
-            core.setOutput('description', description);
-            core.setOutput('goals', goals);
-            
-            console.log('📋 Parsed Template:', { habitName, category, priority, frequency });
-
-      # NEW: Apply Template Labels
-      - name: Apply Template Labels
-        if: steps.check_template.outputs.is_template == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const category = '${{ steps.parse.outputs.category }}';
-            const priority = '${{ steps.parse.outputs.priority }}';
-            const frequency = '${{ steps.parse.outputs.frequency }}';
-            
-            const labels = ['habit-tracker'];
-            
-            if (category && category !== 'Personal') {
-              labels.push(`category/${category.toLowerCase()}`);
-            }
-            
-            if (priority) {
-              labels.push(`priority/${priority.toLowerCase()}`);
-            }
-            
-            if (frequency) {
-              labels.push(`frequency/${frequency.toLowerCase()}`);
-            }
-            
-            console.log('🏷️  Applying labels:', labels);
-            
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: labels
-            });
-
       - name: Process Logic
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           EVENT_NAME: ${{ github.event_name }}
-          IS_TEMPLATE: ${{ steps.check_template.outputs.is_template }}
-          HABIT_NAME: ${{ steps.parse.outputs.habitName }}
-          CATEGORY: ${{ steps.parse.outputs.category }}
-          PRIORITY: ${{ steps.parse.outputs.priority }}
-          FREQUENCY: ${{ steps.parse.outputs.frequency }}
-          DESCRIPTION: ${{ steps.parse.outputs.description }}
-          GOALS: ${{ steps.parse.outputs.goals }}
         run: |
           CLEAN_TITLE=$(echo "$ISSUE_TITLE" | xargs)
           LOWER_TITLE=$(echo "$CLEAN_TITLE" | tr '[:upper:]' '[:lower:]')
           TODAY=$(date +%Y-%m-%d)
           CURRENT_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          # PATH A: THE JANITOR (Sunday Cleanup)
-          if [ "$EVENT_NAME" = "schedule" ] && [ "$(date +%u)" = "7" ]; then
-            echo "Cleaning up old issue logs..."
-            gh issue list --state closed --label "habit-log" --limit 1000 --json number --jq '.[].number' | xargs -I {} gh issue delete {} --yes 2>/dev/null || true
-          fi
-
-          # PATH B: AUTO-RESET HABITS
+          # PATH A: AUTO-RESET/REFRESH
           if [ "$EVENT_NAME" = "schedule" ] || [ "$LOWER_TITLE" = "refresh" ]; then
-            echo "Auto-resetting habits based on frequency..."
-            DAY_OF_WEEK=$(date +%u)
-            DAY_OF_MONTH=$(date +%d)
-            
-            if [ "$LOWER_TITLE" = "refresh" ]; then
-              jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
-            else
-              jq --argjson sun "$([ "$DAY_OF_WEEK" -eq 7 ] && echo true || echo false)" \
-                 --argjson first "$([ "$DAY_OF_MONTH" -eq 1 ] && echo true || echo false)" \
-                'map(
-                  if .frequency == "daily" or 
-                     ($sun and .frequency == "weekly") or 
-                     ($first and .frequency == "monthly") then
-                    .completed = false
-                  else . end
-                )' database.json > temp.json && mv temp.json database.json
-            fi
-          fi
+            echo "Resetting habits..."
+            jq 'map(.completed = false)' database.json > temp.json && mv temp.json database.json
 
-          # PATH C: TEMPLATE ISSUE - Add with all metadata
-          if [ "$IS_TEMPLATE" = "true" ]; then
-            echo "Processing template issue..."
-            EXISTING=$(jq --arg NAME "$HABIT_NAME" '.[] | select(.task | ascii_downcase == ($NAME | ascii_downcase))' database.json 2>/dev/null)
-            
-            if [ -z "$EXISTING" ]; then
-              jq --arg T "$HABIT_NAME" \
-                 --arg CAT "$CATEGORY" \
-                 --arg PRI "$PRIORITY" \
-                 --arg FREQ "$FREQUENCY" \
-                 --arg DESC "$DESCRIPTION" \
-                 --arg GOALS "$GOALS" \
-                 --arg DATE "$TODAY" \
-                 '. += [{
-                   "task": $T,
-                   "category": $CAT,
-                   "priority": $PRI,
-                   "frequency": $FREQ,
-                   "description": $DESC,
-                   "goals": $GOALS,
-                   "completed": false,
-                   "totalCompleted": 0,
-                   "streak": 0,
-                   "createdAt": $DATE,
-                   "completedDates": [],
-                   "history": []
-                 }]' database.json > temp.json && mv temp.json database.json
-              echo "✅ Habit added with template fields"
-            fi
-
-          # PATH D: REMOVE TASK
+          # PATH B: REMOVE TASK
           elif [[ "$LOWER_TITLE" == remove* ]]; then
             TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Rr][Ee][Mm][Oo][Vv][Ee][[:space:]]*//')
+            echo "Removing task: $TARGET"
             jq --arg T "$TARGET" 'del(.[] | select(.task | ascii_downcase == ($T | ascii_downcase)))' database.json > temp.json && mv temp.json database.json
 
-          # PATH E: MARK AS DONE
+          # PATH C: MARK AS DONE
           elif [[ "$LOWER_TITLE" == done* ]]; then
             TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Dd][Oo][Nn][Ee][[:space:]]*//')
             YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+            echo "Completing task: $TARGET"
             jq --arg T "$TARGET" --arg DATE "$TODAY" --arg YESTERDAY "$YESTERDAY" --arg TIME "$CURRENT_TIME" '
               map(
                 if .task | ascii_downcase == ($T | ascii_downcase) then
@@ -201,39 +61,29 @@ jobs:
               )
             ' database.json > temp.json && mv temp.json database.json
 
-          # PATH F: SET CATEGORY
-          elif [[ "$LOWER_TITLE" == category* ]]; then
-            TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Cc][Aa][Tt][Ee][Gg][Oo][Rr][Yy][[:space:]]+//' | cut -d'|' -f1 | xargs)
-            CATEGORY=$(echo "$CLEAN_TITLE" | cut -d'|' -f2 | xargs)
-            jq --arg T "$TARGET" --arg CAT "$CATEGORY" 'map(if .task | ascii_downcase == ($T | ascii_downcase) then .category = $CAT else . end)' database.json > temp.json && mv temp.json database.json
-
-          # PATH G: SET PRIORITY
-          elif [[ "$LOWER_TITLE" == priority* ]]; then
-            TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Pp][Rr][Ii][Oo][Rr][Ii][Tt][Yy][[:space:]]+//' | cut -d'|' -f1 | xargs)
-            PRIORITY=$(echo "$CLEAN_TITLE" | cut -d'|' -f2 | xargs)
-            jq --arg T "$TARGET" --arg PRI "$PRIORITY" 'map(if .task | ascii_downcase == ($T | ascii_downcase) then .priority = $PRI else . end)' database.json > temp.json && mv temp.json database.json
-
-          # PATH H: SET FREQUENCY
-          elif [[ "$LOWER_TITLE" == frequency* ]]; then
-            TARGET=$(echo "$CLEAN_TITLE" | sed -E 's/^[Ff][Rr][Ee][Qq][Uu][Ee][Nn][Cc][Yy][[:space:]]+//' | cut -d'|' -f1 | xargs)
-            FREQ=$(echo "$CLEAN_TITLE" | cut -d'|' -f2 | xargs | tr '[:upper:]' '[:lower:]')
-            jq --arg T "$TARGET" --arg FREQ "$FREQ" 'map(if .task | ascii_downcase == ($T | ascii_downcase) then .frequency = $FREQ else . end)' database.json > temp.json && mv temp.json database.json
-
-          # PATH I: ADD NEW TASK (Non-template)
-          elif [ "$EVENT_NAME" = "issues" ] && [ "$IS_TEMPLATE" != "true" ]; then
-            jq --arg T "$CLEAN_TITLE" --arg DATE "$TODAY" 'if any(.[]; .task == $T) then . else . + [{"task": $T, "completed": false, "category": "Personal", "priority": "Medium", "frequency": "daily", "totalCompleted": 0, "streak": 0, "createdAt": $DATE, "completedDates": [], "history": []}] end' database.json > temp.json && mv temp.json database.json
+          # PATH D: ADD NEW TASK
+          elif [ "$EVENT_NAME" = "issues" ]; then
+            echo "Adding task: $CLEAN_TITLE"
+            jq --arg T "$CLEAN_TITLE" --arg DATE "$TODAY" '
+              if any(.[]; .task | ascii_downcase == ($T | ascii_downcase)) then
+                .
+              else
+                . + [{
+                  "task": $T,
+                  "completed": false,
+                  "category": "Personal",
+                  "priority": "Medium",
+                  "frequency": "daily",
+                  "completedDates": [],
+                  "streak": 0,
+                  "totalCompleted": 0,
+                  "createdAt": $DATE,
+                  "lastCompletedDate": null,
+                  "history": []
+                }]
+              end
+            ' database.json > temp.json && mv temp.json database.json
           fi
-
-      - name: Calculate Analytics
-        run: |
-          jq '{
-            "totalTasks": length,
-            "completedToday": [.[] | select(.completed == true)] | length,
-            "completionRate": (if length > 0 then (([.[] | select(.completed == true)] | length) / length * 100 | round) else 0 end),
-            "topHabits": (sort_by(-.totalCompleted) | .[0:3] | map({task: .task, completions: .totalCompleted, streak: .streak})),
-            "needsAttention": (sort_by(.totalCompleted) | .[0:3] | map({task: .task, completions: .totalCompleted})),
-            "categories": (group_by(.category) | map({category: .[0].category, total: length, completed: ([.[] | select(.completed == true)] | length)}))
-          }' database.json > analytics.json
 
       - name: Rebuild README with Dashboard
         run: |
@@ -246,138 +96,57 @@ jobs:
           fi
 
           cat > README.md << EOF
-# ☀️ Daily Dashboard & Habit Tracker Pro
-**Last Update:** \$(date)
+# ☀️ Daily Dashboard & Habit Tracker
+**Last Update:** $(date)
 
 ---
 
 ## 📊 Today's Quick Stats
 
-- **Completion Rate:** \$COMPLETED/\$TOTAL tasks (\${RATE}%)
-- **Total Habits:** \$TOTAL
-- **Last Updated:** \$(date)
+- **Completion Rate:** $COMPLETED/$TOTAL tasks (${RATE}%)
+- **Total Habits:** $TOTAL
+- **Last Updated:** $(date)
 
 ---
 
-## 🎯 Tasks by Category
+## 🎯 Habits Checklist
 
 EOF
 
-          jq -r '.[].category' database.json | sort -u | while IFS= read -r category; do
-            if [ -n "$category" ] && [ "$category" != "null" ]; then
-              echo "### 📌 \$category" >> README.md
-              jq -r --arg CAT "\$category" --arg REPO "${{ github.repository }}" '.[] | select(.category == \$CAT) | if .completed then "- [x] **\(.task)** | Priority: \(.priority) | Streak: 🔥\(.streak)" else "- [ ] \(.task) | Priority: \(.priority) | Streak: 🔥\(.streak) ➔ [[Tick It](https://github.com/\(\$REPO)/issues/new?title=DONE%20\(.task|@uri))]" end' database.json >> README.md
-              echo "" >> README.md
-            fi
-          done
-
-          cat >> README.md << EOF
-
----
-
-## 📈 Analytics & Insights
-
-### 🏆 Top Performers
-EOF
-
-          TOP_HABITS=\$(jq -r '.[] | select(.totalCompleted > 0) | "- **\(.task):** \(.totalCompleted) completions | Streak: 🔥\(.streak)"' database.json | head -3)
-          if [ -z "\$TOP_HABITS" ]; then
-            echo "- Start completing tasks to see your performance! 🎉" >> README.md
-          else
-            echo "\$TOP_HABITS" >> README.md
-          fi
-
-          cat >> README.md << EOF
-
-### ⚠️ Needs Attention
-EOF
-
-          NEEDS_ATTENTION=\$(jq -r '.[] | select(.totalCompleted == 0) | "- **\(.task):** Priority: \(.priority)"' database.json | head -3)
-          if [ -z "\$NEEDS_ATTENTION" ]; then
-            echo "- All habits have been started! 🎉" >> README.md
-          else
-            echo "\$NEEDS_ATTENTION" >> README.md
-          fi
+          jq -r '.[] | if .completed then "- [x] **\(.task)** | Streak: 🔥\(.streak)" else "- [ ] \(.task) | Streak: 🔥\(.streak) ➔ [[Tick It](https://github.com/${{ github.repository }}/issues/new?title=DONE%20\(.task|@uri))]" end' database.json >> README.md
 
           cat >> README.md << 'EOF'
+
 
 ---
 
 ## 🚀 How to Use
 
-### Add a New Task Using Template
-[Click here to add a new task using the template](https://github.com/${{ github.repository }}/issues/new?template=habit-tracker.yml)
+### Add a New Task
+[Click here to add a new task](https://github.com/${{ github.repository }}/issues/new) by using the task name as the issue title.
 
 ### Mark Task as Done
-Click "Tick It" or create issue: `DONE TaskName`
+Click "Tick It" next to any habit, or open an issue with the title `DONE TaskName`.
 
 ### Remove a Task
-Create issue: `REMOVE TaskName`
+Open an issue with the title `REMOVE TaskName`.
 
-### Set Category
-Create issue: `CATEGORY TaskName | Learning`
-
-### Set Priority
-Create issue: `PRIORITY TaskName | High`
-
-### Set Frequency
-Create issue: `FREQUENCY TaskName | daily`
-
----
-
-## ✨ Features
-
-✅ Analytics & Stats | ✅ Categories & Priorities | ✅ Recurring Habits | ✅ Complete History | ✅ Visual Dashboard | ✅ Template-based Issue Creation
-
-**Built with ❤️ using GitHub Actions & YAML**
+### Reset/Refresh Tasks
+Open an issue with the title `REFRESH` to manually reset tasks.
 EOF
 
-      # NEW: Post Template Confirmation
-      - name: Post Template Confirmation
-        if: steps.check_template.outputs.is_template == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const habitName = '${{ steps.parse.outputs.habitName }}';
-            const category = '${{ steps.parse.outputs.category }}';
-            const priority = '${{ steps.parse.outputs.priority }}';
-            const frequency = '${{ steps.parse.outputs.frequency }}';
-            
-            const comment = `
-✅ **Habit Successfully Tracked!**
-
-📋 **Habit Details:**
-| Field | Value |
-|-------|-------|
-| **Name** | ${habitName} |
-| **Category** | ${category} |
-| **Priority** | ${priority} |
-| **Frequency** | ${frequency} |
-
-Your habit has been added to the tracker with all metadata!
-            `;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });
-
-      - name: Force Save
+      - name: Save Changes
         run: |
           git config --global user.name "HabitBot"
           git config --global user.email "bot@github.com"
-          git add database.json analytics.json README.md
-          git commit -m "Automated Dashboard Update - Template Processing Enabled" || exit 0
+          git add database.json README.md
+          git commit -m "Automated Dashboard Update - Simplified" || exit 0
           git push origin main
 
-      - name: Label and Close Issue
+      - name: Close Issue
         if: github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUM: ${{ github.event.issue.number }}
         run: |
-          gh label create "habit-log" --color "FBCA04" --description "Habit Tracker Logs" || true
-          gh issue edit $ISSUE_NUM --add-label "habit-log"
           gh issue close $ISSUE_NUM
