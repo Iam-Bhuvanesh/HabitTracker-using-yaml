@@ -1,7 +1,7 @@
 [
   {
     "task": "Shell Kode",
-    "completed": true,
+    "completed": false,
     "category": "Personal",
     "priority": "Medium",
     "frequency": "daily",
